@@ -14,20 +14,25 @@ struct timespec {
 };
 #endif
 
+#ifndef __timeval_defined
+#define __timeval_defined
 struct timeval {
 	__kernel_old_time_t	tv_sec;		/* seconds */
 	__kernel_suseconds_t	tv_usec;	/* microseconds */
 };
+#endif
 
 struct itimerspec {
 	struct timespec it_interval;/* timer period */
 	struct timespec it_value;	/* timer expiration */
 };
 
+#ifndef _SYS_TIME_H
 struct itimerval {
 	struct timeval it_interval;/* timer interval */
 	struct timeval it_value;	/* current value */
 };
+#endif
 #endif
 
 struct timezone {
@@ -39,9 +44,15 @@ struct timezone {
  * Names of the interval timers, and structure
  * defining a timer setting:
  */
+#ifndef ITIMER_REAL
 #define	ITIMER_REAL		0
+#endif
+#ifndef ITIMER_VIRTUAL
 #define	ITIMER_VIRTUAL		1
+#endif
+#ifndef ITIMER_PROF
 #define	ITIMER_PROF		2
+#endif
 
 /*
  * The IDs of the various system clocks (for POSIX.1b interval timers):
