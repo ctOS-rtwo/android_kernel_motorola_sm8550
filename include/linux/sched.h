@@ -568,10 +568,23 @@ struct sched_entity {
 	struct sched_avg		avg;
 #endif
 
+#ifdef CONFIG_SCHED_BORE
+	ANDROID_KABI_USE(1, u64 burst_time);
+	ANDROID_KABI_USE(2, u64 child_burst_last_cached);
+	ANDROID_KABI_USE(3, struct {
+		u8 prev_burst_penalty;
+		u8 curr_burst_penalty;
+		u8 burst_penalty;
+		u8 burst_score;
+		u8 child_burst;
+	});
+	ANDROID_KABI_USE(4, u32 child_burst_cnt);
+#else
 	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
+#endif // CONFIG_SCHED_BORE
 };
 
 struct sched_rt_entity {
