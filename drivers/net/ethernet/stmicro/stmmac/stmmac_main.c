@@ -1658,8 +1658,10 @@ static void stmmac_free_tx_buffer(struct stmmac_priv *priv, u32 queue, int i)
 		tx_q->xdpf[i] = NULL;
 	}
 
-	if (tx_q->tx_skbuff_dma[i].buf_type == STMMAC_TXBUF_T_XSK_TX)
+	if (tx_q->tx_skbuff_dma[i].buf_type == STMMAC_TXBUF_T_XSK_TX) {
 		tx_q->xsk_frames_done++;
+		tx_q->tx_skbuff_dma[i].buf_type = STMMAC_TXBUF_T_SKB;
+	}
 
 	if (tx_q->tx_skbuff[i] &&
 	    tx_q->tx_skbuff_dma[i].buf_type == STMMAC_TXBUF_T_SKB) {
@@ -2720,8 +2722,11 @@ if (priv->dev->stats.tx_packets == 1)
 			tx_q->xdpf[entry] = NULL;
 		}
 
-		if (tx_q->tx_skbuff_dma[entry].buf_type == STMMAC_TXBUF_T_XSK_TX)
+		if (tx_q->tx_skbuff_dma[entry].buf_type == STMMAC_TXBUF_T_XSK_TX) {
 			tx_q->xsk_frames_done++;
+			/* Teardown must not count this slot again. */
+			tx_q->tx_skbuff_dma[entry].buf_type = STMMAC_TXBUF_T_SKB;
+		}
 
 		if (tx_q->tx_skbuff_dma[entry].buf_type == STMMAC_TXBUF_T_SKB) {
 			if (likely(skb)) {
@@ -4367,6 +4372,8 @@ static netdev_tx_t stmmac_tso_xmit(struct sk_buff *skb, struct net_device *dev)
 		set_ic = true;
 	else if (!priv->tx_coal_frames[queue])
 		set_ic = false;
+	else if (!netdev_xmit_more())
+		set_ic = true;
 	else if (tx_packets > priv->tx_coal_frames[queue])
 		set_ic = true;
 	else if ((tx_q->tx_count_frames %
@@ -4589,7 +4596,7 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 	if (likely(priv->tx_coal_timer_disable)) {
 		if (priv->plat->get_plat_tx_coal_frames) {
 			int_mod = priv->plat->get_plat_tx_coal_frames(skb);
-			if (!(tx_q->cur_tx % int_mod)) {
+			if (!netdev_xmit_more() || !(tx_q->cur_tx % int_mod)) {
 				if (likely(priv->extend_desc))
 					desc = &tx_q->dma_etx[entry].basic;
 				else if (tx_q->tbs & STMMAC_TBS_AVAIL)
@@ -4597,9 +4604,9 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 				else
 					desc = &tx_q->dma_tx[entry];
 
-			tx_q->tx_count_frames = 0;
-			stmmac_set_tx_ic(priv, desc);
-			priv->xstats.tx_set_ic_bit++;
+				tx_q->tx_count_frames = 0;
+				stmmac_set_tx_ic(priv, desc);
+				priv->xstats.tx_set_ic_bit++;
 			}
 		}
 	} else {
@@ -4607,6 +4614,8 @@ static netdev_tx_t stmmac_xmit(struct sk_buff *skb, struct net_device *dev)
 			set_ic = true;
 		else if (!priv->tx_coal_frames[queue])
 			set_ic = false;
+		else if (!netdev_xmit_more())
+			set_ic = true;
 		else if (tx_packets > priv->tx_coal_frames[queue])
 			set_ic = true;
 		else if ((tx_q->tx_count_frames %

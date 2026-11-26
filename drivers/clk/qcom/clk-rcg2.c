@@ -177,14 +177,17 @@ static int clk_rcg2_set_force_enable(struct clk_hw *hw)
 		return ret;
 
 	for (; count > 0; count--) {
-		if (clk_rcg2_is_enabled(hw))
+		ret = clk_rcg2_is_enabled(hw);
+		if (ret < 0)
 			return ret;
+		if (ret)
+			return 0;
 		/* Delay for 1usec and retry polling the status bit */
 		udelay(1);
 	}
 
 	WARN_CLK(hw, 1, "rcg didn't turn on.");
-	return ret;
+	return -ETIMEDOUT;
 }
 
 static int clk_rcg2_clear_force_enable(struct clk_hw *hw)
@@ -1429,8 +1432,10 @@ clk_rcg2_shared_force_enable_clear(struct clk_hw *hw, const struct freq_tbl *f)
 		return ret;
 
 	ret = clk_rcg2_configure(rcg, f);
-	if (ret)
+	if (ret) {
+		clk_rcg2_clear_force_enable(hw);
 		return ret;
+	}
 
 	return clk_rcg2_clear_force_enable(hw);
 }
