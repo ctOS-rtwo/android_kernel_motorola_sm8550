@@ -255,6 +255,7 @@ bool shmem_file(struct file *file)
 {
 	return file && file_inode(file)->i_fop == &shmem_file_operations;
 }
+EXPORT_SYMBOL_GPL(shmem_file);
 
 bool vma_is_shmem(struct vm_area_struct *vma)
 {
