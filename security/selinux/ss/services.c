@@ -1399,6 +1399,37 @@ out_unlock:
 
 }
 
+int security_sid_to_context_type(struct selinux_state *state, u32 sid, u32 *out)
+{
+	struct selinux_policy *policy;
+	struct sidtab *sidtab;
+	struct sidtab_entry *entry;
+	int rc = 0;
+
+	if (!selinux_initialized(state)) {
+		pr_err("SELinux: %s:  called before initial load_policy on SID %d\n",
+		       __func__, sid);
+		return -EINVAL;
+	}
+
+	rcu_read_lock();
+	policy = rcu_dereference(state->policy);
+	sidtab = policy->sidtab;
+
+	entry = sidtab_search_entry(sidtab, sid);
+	if (!entry) {
+		pr_err("SELinux: %s:  unrecognized SID %d\n", __func__, sid);
+		rc = -EINVAL;
+		goto out_unlock;
+	}
+
+	*out = entry->context.type;
+
+out_unlock:
+	rcu_read_unlock();
+	return rc;
+}
+
 /**
  * security_sid_to_context - Obtain a context for a given SID.
  * @state: SELinux state
